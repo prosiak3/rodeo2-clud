@@ -1,1 +1,13 @@
-{ "name": "rodeo2-clud", "compatibility_date": "2026-10-01", "assets": { "directory": "./", "not_found_handling": "single-page-application" } }
+{
+  "$schema": "./node_modules/wrangler/config-schema.json",
+  "name": "rodeo2-clud",
+  "account_id": "2e7a7c09e4763a81d34de50ff5fe9815",
+  "main": "src/index.js",
+  "compatibility_date": "2026-10-07",
+  "workers_dev": true,
+  "assets": {
+    "directory": "./public",
+    "binding": "ASSETS",
+    "run_worker_first": true
+  }
+}
