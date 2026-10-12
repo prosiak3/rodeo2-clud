@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="description" content="Klikalna makieta MVP: jedna okazja dziennie od dystrybutora dla sklepów. Wersja demonstracyjna — fikcyjne dane i płatności.">
-<title>Okazje B2B — prototyp v5.3</title>
+<title>Okazje B2B — prototyp v5.4</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@500;600&family=Barlow+Condensed:wght@600&display=swap" rel="stylesheet">
@@ -557,6 +557,34 @@ body.kb .tabbar{display:none}
 .piggy-anim .progress span{animation:barfill 1.3s cubic-bezier(.2,.7,.2,1) .7s both}
 @keyframes barfill{from{width:var(--bar-from,0)}}
 @media (prefers-reduced-motion:reduce){.jar-anim .jar-fill,.jar-coin,.piggy-anim .jar-ico,.piggy-anim .progress span{animation:none}.jar-coin{opacity:0}}
+
+/* v5.4: pełnoekranowa animacja „moneta wpada do słoika” */
+.coin-burst{position:fixed;inset:0;z-index:90;display:flex;align-items:center;justify-content:center;background:rgba(13,22,30,.88);-webkit-backdrop-filter:blur(3px);backdrop-filter:blur(3px);animation:cbfade .25s ease-out both;cursor:pointer}
+.coin-burst.out{animation:cbout .3s ease-in forwards}
+@keyframes cbfade{from{opacity:0}to{opacity:1}}
+@keyframes cbout{to{opacity:0}}
+.cb-stage{position:relative;display:flex;flex-direction:column;align-items:center;gap:6px;color:#fff;text-align:center;padding:24px}
+.cb-jar{width:170px;height:220px;animation:cbjarin .35s cubic-bezier(.2,1.4,.4,1) both, cbsquash .45s ease-out 1.12s both}
+.cb-jar .jar{width:100%;height:100%;display:block;overflow:visible}
+.cb-jar .jar-drop{display:none}
+.coin-burst .jar-anim .jar-fill{animation-delay:1.2s;animation-duration:1.1s}
+@keyframes cbjarin{from{transform:scale(.6);opacity:0}to{transform:scale(1);opacity:1}}
+@keyframes cbsquash{0%{transform:scale(1)}30%{transform:scale(1.1,.9)}60%{transform:scale(.96,1.05)}100%{transform:scale(1)}}
+.cb-coin{position:absolute;left:50%;top:0;width:88px;height:88px;margin-left:-44px;z-index:2;animation:cbdrop 1s cubic-bezier(.5,0,.85,.6) .15s both;filter:drop-shadow(0 6px 10px rgba(0,0,0,.35))}
+.cb-coin svg{width:100%;height:100%;display:block;animation:cbspin .25s linear infinite}
+@keyframes cbdrop{0%{transform:translateY(-50vh) scale(1.2);opacity:0}8%{opacity:1}86%{transform:translateY(52px) scale(.7);opacity:1}100%{transform:translateY(70px) scale(.3);opacity:0}}
+@keyframes cbspin{0%{transform:scaleX(1)}50%{transform:scaleX(.15)}100%{transform:scaleX(1)}}
+.cb-sparks{position:absolute;left:50%;top:70px;width:0;height:0;pointer-events:none}
+.cb-sparks i{position:absolute;left:-5px;top:-5px;width:10px;height:10px;border-radius:50%;background:#FFD23F;box-shadow:0 0 0 2px rgba(255,210,63,.35);opacity:0;animation:cbspark .7s ease-out 1.14s both;transform:rotate(var(--a)) translateY(0)}
+@keyframes cbspark{0%{opacity:1;transform:rotate(var(--a)) translateY(0) scale(.6)}100%{opacity:0;transform:rotate(var(--a)) translateY(calc(var(--d) * -1)) scale(1)}}
+.cb-gain{font-family:var(--mono,'IBM Plex Mono',ui-monospace,monospace);font-weight:600;font-size:40px;line-height:1;color:#FFD23F;animation:cbpop .45s cubic-bezier(.2,1.6,.4,1) 1.2s both}
+.cb-total{font-size:18px;font-weight:500;animation:cbfade .3s ease-out 1.4s both}
+.cb-total b{font-weight:600}
+.cb-goal{font-size:14px;color:#DCE5EB;animation:cbfade .3s ease-out 1.6s both}
+@keyframes cbpop{from{transform:scale(.3);opacity:0}to{transform:scale(1);opacity:1}}
+.coin-burst.still .cb-jar,.coin-burst.still .cb-gain,.coin-burst.still .cb-total,.coin-burst.still .cb-goal{animation:none}
+@media (prefers-reduced-motion:reduce){.coin-burst,.coin-burst.out{animation:none}}
+body.cb-on .pig-toast{visibility:hidden}
 </style>
 </head>
 <body>
@@ -575,7 +603,7 @@ body.kb .tabbar{display:none}
    dwa tryby zakupu (samodzielny / z akceptacją właściciela), skarbonka punktów.
    Wszystko lokalnie: fikcyjne dane, symulowane powiadomienia i płatności.
    ========================================================================== */
-const VERSION='v5.3';
+const VERSION='v5.4';
 const KEY='okazje-b2b-proto-v5-1';
 const HOUR=3600000, MIN=60000, DAY=86400000;
 const NBSP=' ';
@@ -1060,6 +1088,44 @@ function pigToast(gained,total){
   t.innerHTML='<div class="piggy-ico">'+ICON.pig+'</div><div><b>+'+gained+' '+plural(gained,['punkt','punkty','punktów'])+'.</b> Masz już <span class="num">'+fmtNum(total)+'</span></div>';
   document.body.appendChild(t); setTimeout(()=>t.remove(),4000);
 }
+
+/* ======================= ANIMACJA „MONETA DO SŁOIKA” + DŹWIĘK ======================= */
+let AC=null;
+function soundOn(){ return !(S.ui&&S.ui.soundOff); }
+function audioUnlock(){ try{ if(!AC){ const C=window.AudioContext||window.webkitAudioContext; if(!C) return; AC=new C(); } if(AC.state==='suspended') AC.resume(); }catch(e){} }
+/* syntetyczny dźwięk monety (bez plików): krótki metaliczny „dzyń” + drugi ton */
+function playCoinSound(delay){
+  if(!soundOn()||!AC) return;
+  try{
+    const t0=AC.currentTime+(delay||0);
+    const tone=(f,t,d,v,type)=>{ const o=AC.createOscillator(), g=AC.createGain(); o.type=type||'sine'; o.frequency.setValueAtTime(f,t); g.gain.setValueAtTime(0.0001,t); g.gain.exponentialRampToValueAtTime(v,t+0.008); g.gain.exponentialRampToValueAtTime(0.0001,t+d); o.connect(g); g.connect(AC.destination); o.start(t); o.stop(t+d+0.05); };
+    /* uderzenie o krawędź słoika */
+    tone(2637,t0,0.18,0.18,'triangle'); tone(3520,t0,0.12,0.07,'sine'); tone(1318,t0,0.25,0.10,'sine');
+    /* odbicie */
+    tone(2349,t0+0.11,0.16,0.10,'triangle'); tone(3136,t0+0.11,0.10,0.05,'sine');
+    /* „dzwonek” nagrody */
+    tone(1568,t0+0.30,0.45,0.10,'sine'); tone(2093,t0+0.38,0.55,0.10,'sine');
+  }catch(e){}
+}
+function coinBurst(gained,from,total){
+  if(!gained) return;
+  const reduce=window.matchMedia&&matchMedia('(prefers-reduced-motion: reduce)').matches;
+  const old=document.querySelector('.coin-burst'); if(old) old.remove();
+  const el=document.createElement('div'); el.className='coin-burst'+(reduce?' still':''); el.setAttribute('role','status'); el.setAttribute('aria-live','polite');
+  const sparks=reduce?'':'<div class="cb-sparks" aria-hidden="true">'+Array.from({length:10},(_,i)=>'<i style="--a:'+(i*36)+'deg;--d:'+(60+(i%3)*18)+'px"></i>').join('')+'</div>';
+  el.innerHTML='<div class="cb-stage">'+
+      (reduce?'':'<div class="cb-coin" aria-hidden="true">'+ICON.coin+'</div>')+
+      '<div class="cb-jar">'+jarSvg(from,total,!reduce)+'</div>'+sparks+
+      '<div class="cb-gain num">+'+fmtNum(gained)+' pkt</div>'+
+      '<div class="cb-total">Masz już <b class="num">'+fmtNum(total)+'</b> pkt w skarbonce</div>'+
+      '<div class="cb-goal">'+(total>=POINTS_GOAL.points?'Cel osiągnięty — '+esc(POINTS_GOAL.label):'Do bonu brakuje <b class="num">'+fmtNum(POINTS_GOAL.points-total)+'</b> pkt')+'</div>'+
+    '</div><span class="sr-only">Dodano '+gained+' punktów do skarbonki.</span>';
+  const close=()=>{ if(!el.isConnected) return; el.classList.add('out'); document.body.classList.remove('cb-on'); setTimeout(()=>el.remove(),300); };
+  el.addEventListener('click',close);
+  document.body.appendChild(el); document.body.classList.add('cb-on');
+  playCoinSound(reduce?0:1.12);
+  setTimeout(close,reduce?1600:3400);
+}
 function animatePiggy(){
   const v=$('#piggy-val'); if(!v) return; const from=parseInt(v.dataset.from,10), to=parseInt(v.dataset.to,10); if(from===to) return;
   const chip=$('#pts-chip-val'); const t0=performance.now()+700; const dur=1300;
@@ -1147,7 +1213,7 @@ function viewOrder(r,role,now){
     '<dt>Numer</dt><dd class="num">'+esc(x.id)+' · '+fmtDateTime(x.createdAt)+'</dd>'+
   '</dl></div>';
   if(!primaryFirst) html+=actsHtml;
-  return {html,back:'#/'+role+'/orders',tab:(isNew||sent)?null:'orders',after(){ if(cel){ animatePiggy(); pigToast(cel.gained,S.shop.points); S.ui.celebrate=null; storage.set(JSON.stringify(S)); } }};
+  return {html,back:'#/'+role+'/orders',tab:(isNew||sent)?null:'orders',after(){ if(cel){ coinBurst(cel.gained,cel.from,S.shop.points); animatePiggy(); pigToast(cel.gained,S.shop.points); S.ui.celebrate=null; storage.set(JSON.stringify(S)); } }};
 }
 
 /* ======================= DYSTRYBUTOR ======================= */
@@ -1360,6 +1426,7 @@ function renderDemo(){
       '<div class="field" style="margin-bottom:10px"><span class="lbl" id="demo-role-l">Oglądasz jako</span><div class="seg" role="radiogroup" aria-labelledby="demo-role-l">'+[['shop','Kierownik sklepu'],['owner','Właściciel sklepu'],['supplier','Dystrybutor']].map(x=>'<label><input type="radio" name="demo-role" data-demo-role="'+x[0]+'"'+(role===x[0]?' checked':'')+'><span>'+x[1]+'</span></label>').join('')+'</div></div>'+
       '<div class="field" style="margin-bottom:10px"><span class="lbl" id="demo-mode-l">Tryb zakupu sklepu (konfiguracja)</span><div class="seg" role="radiogroup" aria-labelledby="demo-mode-l"><label><input type="radio" name="demo-mode" data-demo-mode="self"'+(S.shop.mode==='self'?' checked':'')+'><span>A: kupuje kierownik</span></label><label><input type="radio" name="demo-mode" data-demo-mode="approval"'+(S.shop.mode==='approval'?' checked':'')+'><span>B: akceptacja właściciela</span></label></div></div>'+
       '<div class="stack"><button type="button" class="btn btn-secondary btn-block" data-act="demo-push">'+ICON.bell+' Symuluj powiadomienie</button>'+
+      '<label class="check"><input type="checkbox" data-act="demo-sound"'+(soundOn()?' checked':'')+'> Dźwięk monety po zakupie</label>'+
       '<label class="check"><input type="checkbox" data-act="demo-fail"'+(S.ui.failNextPayment?' checked':'')+'> Następna płatność kończy się błędem</label>'+
       '<div class="row" style="gap:8px"><button type="button" class="btn btn-secondary" style="flex:1" data-act="demo-soldout">Inny sklep wykupuje resztę</button><button type="button" class="btn btn-secondary" style="flex:1" data-act="demo-expire">Oferta wygasa teraz</button></div>'+
       '<div class="row" style="gap:8px"><button type="button" class="btn btn-secondary" style="flex:1" data-act="demo-newday">Nowy dzień</button><button type="button" class="btn btn-secondary" style="flex:1" data-act="demo-reset">Reset</button></div></div>'+
@@ -1370,7 +1437,8 @@ function renderDemo(){
 }
 
 /* ======================= ZDARZENIA ======================= */
-document.addEventListener('click',e=>{
+document.addEventListener('click',e=>{ const ua=e.target.closest&&e.target.closest('[data-act="buy"],[data-act="pay-order"]'); if(ua) audioUnlock();
+
   const link=e.target.closest('a[href^="#/"]');
   if(link&&!e.defaultPrevented&&!e.metaKey&&!e.ctrlKey&&!e.shiftKey&&!e.altKey&&e.button===0){ e.preventDefault(); go(link.getAttribute('href')); return; }
   const a=e.target.closest('[data-act]'); if(!a) return;
@@ -1406,6 +1474,7 @@ document.addEventListener('change',e=>{
   const t=e.target;
   if(t.matches('[data-demo-role]')){ S.ui.demoOpen=false; S.ui.confirmClose=null; save(); go({shop:'#/shop/today',owner:'#/owner/orders',supplier:'#/supplier/offers'}[t.dataset.demoRole]); return; }
   if(t.matches('[data-demo-mode]')){ S.shop.mode=t.dataset.demoMode; S.ui.demoOpen=false; save(); render(); toast(S.shop.mode==='self'?'Tryb A: kierownik kupuje i płaci samodzielnie.':'Tryb B: zamówienie wymaga akceptacji właściciela.'); return; }
+  if(t.matches('[data-act="demo-sound"]')){ S.ui.soundOff=!t.checked; save(); if(t.checked){ audioUnlock(); playCoinSound(); } return; }
   if(t.matches('[data-act="demo-fail"]')){ S.ui.failNextPayment=t.checked; save(); return; }
   if(t.matches('[data-f]')){ const f=S.ui.form; if(!f) return; const name=t.dataset.f; f[name]=t.value;
     if(name==='endMode'||name==='fulfilId'||name==='groupId'){ delete f.errors[name==='endMode'?'end':name==='fulfilId'?'fulfil':'group']; if(name!=='endMode') f.open=null; save(); render(); if(name==='endMode'){ const el=f.endMode==='custom'?$('#f-end-custom'):$('input[name="endMode"]:checked'); if(el) el.focus(); } else { const b=$('[data-act="cond-open"][data-key="'+(name==='fulfilId'?'fulfil':'group')+'"]'); if(b) b.focus(); } return; }
