@@ -2,9 +2,9 @@
 
 Makieta platformy okazji hurtowych (producent → sklep). Wersja demonstracyjna: fikcyjne dane, symulowane powiadomienia i płatności.
 
-Aktualna wersja: **v5.4** (`PARTIA-v5.4.html`) — design B2, słoik z monetami jako skarbonka, pełnoekranowa animacja „moneta wpada do słoika” z dźwiękiem po udanej płatności.
+Aktualna wersja: **v6.1** (`PARTIA-v6.1.html`) — dzisiejsza promocja z minimum dostawy 5000 zł netto; wariant A (promocja wystarcza do minimum) i B (promocja + gotowy zestaw lub „Polecane przez dystrybutora”), przełączane w zwiniętym panelu DEMO. Dane handlowe przykładowe.
 
-Build: `npm run build` (`scripts/build.mjs`) kopiuje `PARTIA-v5.4.html` do `public/index.html`.
+Build: `npm run build` (`scripts/build.mjs`) kopiuje `PARTIA-v6.1.html` do `public/index.html`.
 
 Publikacja: GitHub (`main`) → Cloudflare Workers Builds (Worker `rodeo2-clud`, zasoby statyczne z `public/`).
 
