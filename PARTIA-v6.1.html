@@ -3,8 +3,8 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<meta name="description" content="Klikalna makieta v6.0: dzisiejsza promocja dystrybutora z minimum dostawy, warianty A i B. Wersja demonstracyjna — fikcyjne dane i płatności.">
-<title>Okazje B2B — prototyp v6.0</title>
+<meta name="description" content="Klikalna makieta v6.1: dzisiejsza promocja dystrybutora z minimum dostawy, warianty A i B. Wersja demonstracyjna — fikcyjne dane i płatności.">
+<title>Okazje B2B — prototyp v6.1</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@500;600&family=Barlow+Condensed:wght@600&display=swap" rel="stylesheet">
@@ -805,6 +805,17 @@ details.calc .spread.sub{border-top:1px solid var(--line);margin-top:4px;padding
   .xstep button,.h-add{min-width:44px;min-height:44px}
   .detail{grid-template-columns:minmax(0,1fr) 440px}
 }
+
+/* ===== v6.1 — korzyść, ilość i dostawa od razu pod ceną ===== */
+.benefit-row{display:flex;flex-wrap:wrap;gap:8px;margin:2px 0 12px}
+.bchip{display:inline-flex;align-items:center;gap:6px;min-height:40px;padding:4px 12px;border-radius:999px;font-weight:600;font-size:.95rem;line-height:1.2;border:1px solid var(--line)}
+.bchip svg{width:20px;height:20px;flex:none}
+.bchip.b-save{background:var(--ok-bg);border-color:var(--ok-line);color:var(--ok)}
+.bchip.b-qty{background:var(--tag);border-color:var(--tag);color:#13202B}
+.bchip.b-del{background:var(--surface-2);color:var(--ink)}
+.bchip.b-del.short{background:var(--danger-bg);border-color:var(--danger-line);color:var(--danger)}
+@media (max-width:899px){ .deal-art{aspect-ratio:5/2} }
+@media (max-width:380px){ .deal-art{aspect-ratio:3/1} .deal-name{font-size:1.25rem} .deal-price{margin:8px 0 6px} }
 </style>
 </head>
 <body>
@@ -823,7 +834,7 @@ details.calc .spread.sub{border-top:1px solid var(--line);margin-top:4px;padding
    dwa tryby zakupu (samodzielny / z akceptacją właściciela), skarbonka punktów.
    Wszystko lokalnie: fikcyjne dane, symulowane powiadomienia i płatności.
    ========================================================================== */
-const VERSION='v6.0';
+const VERSION='v6.1';
 const KEY='okazje-b2b-proto-v6';
 const HOUR=3600000, MIN=60000, DAY=86400000;
 const NBSP=' ';
@@ -1171,6 +1182,7 @@ function viewToday(r,now){
       (o.regularNet?'<span class="price-cond">od '+cartonsText(o.promoMinCartons)+' · cena regularna <span class="num">'+zl(o.regularNet)+'</span></span>':'')+
       (o.regularNet&&variantB()?'<span class="price-cond">Dobicie innymi produktami nie przywraca ceny '+zl(o.priceNet)+' na wkładach.</span>':'')+
       (o.sample?'<span class="sample-tag">dane przykładowe dystrybutora</span>':'')+'</div>'+
+    (buyable?'<div class="benefit-row" id="benefit-row">'+benefitHtml(o,cartState(o),now)+'</div>':'')+
     '<ul class="meta">'+
       '<li class="tile"><span class="t-top">'+ICON.box+'Opakowanie</span><span class="t-val">'+esc(o.pack.palletCartons?'karton '+o.pack.size+' '+o.unit+' · paleta '+o.pack.palletCartons+' kartonów':'karton '+o.pack.size+' '+o.unit)+'</span></li>'+
       '<li class="tile"><span class="t-top">'+ICON.check+'Dostępne</span><span class="ear">'+esc(cartonsText(rem))+'</span></li>'+
@@ -1219,10 +1231,19 @@ function buyDyn(o,cs){
   }
   h+='<div id="qty-msg" role="alert">'+(chk.ok?'':'<div class="err">'+ICON.warn+'<span>'+esc(chk.msg)+'</span></div>')+'</div>';
   if(chk.ok) h+=minBox(k);
+  if(chk.ok&&!k.minOk&&!variantB()){ const m=cartonsForMin(o); h+='<p class="hint-line" id="min-hint">Najmniej do dostawy: <b>'+esc(cartonsText(m))+'</b> ('+zl(promoUnit(o,m))+'/'+esc(o.unit)+'). <button type="button" class="linkbtn" data-act="qty-set" data-val="'+m+'">Ustaw '+esc(cartonsText(m))+'</button></p>'; }
   if(chk.ok&&variantB()&&(!k.minOk||k.extrasNet>0)) h+=fillBlock(o,cs);
   const wasOpen=S.ui.calcOpen;
   h+='<details class="calc" id="buy-calc"'+(wasOpen?' open':'')+'><summary>Rozliczenie</summary><div id="buy-totals">'+totalsHtml(k,o,chk.ok)+'</div></details>';
   return h;
+}
+/* v6.1: korzyść + gotowa ilość + dostawa — od razu pod ceną (pierwszy ekran telefonu) */
+function benefitHtml(o,cs,now){
+  const {chk,n,k}=cs; if(!chk.ok) return '';
+  const qty='<span class="bchip b-qty">'+ICON.box+'<span>'+esc(cartonsText(n))+(o.pack.palletCartons&&n%o.pack.palletCartons===0?' = '+(n/o.pack.palletCartons)+NBSP+plural(n/o.pack.palletCartons,['paleta','palety','palet']):'')+'</span></span>';
+  const gain=k.savings?'<span class="bchip b-save">'+ICON.check+'<span>Oszczędzasz <b class="num">'+zl(k.savings)+'</b></span></span>':'';
+  const del='<span class="bchip b-del'+(k.minOk?'':' short')+'">'+ICON.truck+'<span>'+(k.minOk?esc(deliveryShort(o.fulfil,now).replace(/,.*$/,''))+' · w cenie':'Brakuje '+esc(zl(k.missing))+' do dostawy')+'</span></span>';
+  return gain+qty+del;
 }
 function minBox(k){
   const pct=Math.min(100,Math.round(k.net/k.minNet*100));
@@ -1241,12 +1262,12 @@ function fillBlock(o,cs){
     h+='<div class="bundle-card"><div class="bundle-top"><div class="set-thumbs" aria-hidden="true">'+b.lines.slice(0,4).map(l=>'<span>'+art(product(l.pid).art)+'</span>').join('')+'</div>'+
       '<div class="bundle-t"><b>'+esc(b.name)+'</b><span>'+b.lines.length+' produktów · '+cartonsText(bcart)+'</span><span class="bundle-amt"><b class="num">'+zl(bnet)+'</b> netto</span></div></div>'+
       '<button type="button" class="linkbtn set-toggle" data-act="set-toggle" aria-expanded="'+(c.setOpen?'true':'false')+'">'+(c.setOpen?'Ukryj skład':'Pokaż skład')+'</button>'+
-      (c.setOpen?'<ul class="xlist ro">'+b.lines.map(l=>{ const p=product(l.pid); const ln=productLine(p,l.cartons); return '<li class="xrow"><span class="x-art">'+art(p.art)+'</span><span class="x-name">'+esc(p.short)+'<small>'+zl(p.listNet)+'/'+esc(p.unit)+' · karton '+p.pack.size+' '+esc(p.unit)+'</small></span><span class="ear sm">'+cartonsText(l.cartons)+'</span><span class="x-amt num">'+zl(ln.net)+'</span></li>'; }).join('')+'</ul>':'')+
+      (c.setOpen?'<ul class="xlist ro">'+b.lines.map(l=>{ const p=product(l.pid); const ln=productLine(p,l.cartons); return '<li class="xrow"><span class="x-art">'+art(p.art)+'</span><span class="x-name">'+esc(p.short)+'<small><b class="num">'+zl(p.pack.size*p.listNet)+'</b> netto / karton · '+p.pack.size+' '+esc(p.unit)+'</small></span><span class="ear sm">'+cartonsText(l.cartons)+'</span><span class="x-amt num">'+zl(ln.net)+'</span></li>'; }).join('')+'</ul>':'')+
       '<button type="button" class="btn '+(k.minOk?'btn-secondary':'btn-primary')+' btn-lg btn-block" data-act="set-add" id="set-add">'+ICON.plus+'Dodaj zestaw · '+zl(bnet)+' netto</button></div>';
   } else {
-    h+='<ul class="xlist">'+Object.keys(c.extras).map(pid=>{ const p=product(pid); const n=c.extras[pid]; const ln=productLine(p,n); return '<li class="xrow" data-pid="'+pid+'"><span class="x-art">'+art(p.art)+'</span><span class="x-name">'+esc(p.short)+'<small>'+zl(p.listNet)+'/'+esc(p.unit)+' · karton '+p.pack.size+' '+esc(p.unit)+' · <span class="num">'+zl(ln.net)+'</span></small></span>'+
-      '<span class="xstep" role="group" aria-label="Kartony: '+esc(p.short)+'"><button type="button" data-act="x-dec" data-pid="'+pid+'" aria-label="Mniej o 1 karton: '+esc(p.short)+'">−1</button><span class="ear sm">'+cartonsText(n)+'</span><button type="button" data-act="x-inc" data-pid="'+pid+'" aria-label="Więcej o 1 karton: '+esc(p.short)+'">+1</button></span></li>'; }).join('')+'</ul>'+
-      '<p class="x-sum">Dodane produkty: <b class="num">'+zl(k.extrasNet)+'</b> netto · <button type="button" class="linkbtn" data-act="x-clear">Usuń dodane</button></p>';
+    if(!c.listOpen) h+='<ul class="xlist">'+Object.keys(c.extras).map(pid=>{ const p=product(pid); const n=c.extras[pid]; const ln=productLine(p,n); return '<li class="xrow" data-pid="'+pid+'"><span class="x-art">'+art(p.art)+'</span><span class="x-name">'+esc(p.short)+'<small><b class="num">'+zl(p.pack.size*p.listNet)+'</b> netto / karton · razem <span class="num">'+zl(ln.net)+'</span></small></span>'+
+      '<span class="xstep" role="group" aria-label="Kartony: '+esc(p.short)+'"><button type="button" data-act="x-dec" data-pid="'+pid+'" aria-label="Mniej o 1 karton: '+esc(p.short)+'">−1</button><span class="ear sm">'+cartonsText(n)+'</span><button type="button" data-act="x-inc" data-pid="'+pid+'" aria-label="Więcej o 1 karton: '+esc(p.short)+'">+1</button></span></li>'; }).join('')+'</ul>';
+    h+='<p class="x-sum">Dodane produkty'+(c.listOpen?' ('+Object.keys(c.extras).length+', zmieniasz je w liście poniżej)':'')+': <b class="num">'+zl(k.extrasNet)+'</b> netto · <button type="button" class="linkbtn" data-act="x-clear">Usuń dodane</button></p>';
   }
   h+='<button type="button" class="btn btn-secondary btn-block" data-act="list-toggle" aria-expanded="'+(c.listOpen?'true':'false')+'" id="list-toggle">'+ICON.list+(c.listOpen?'Ukryj inne produkty':'Wybierz inne produkty')+'</button>';
   if(c.listOpen) h+=helperList(c);
@@ -1255,7 +1276,7 @@ function fillBlock(o,cs){
 }
 function helperList(c){
   return '<div class="helper" id="helper"><h3 class="fill-h">Polecane przez dystrybutora</h3><ul class="hlist">'+HELPER_IDS.map(pid=>{ const p=product(pid); if(!p||!p.listNet) return ''; const n=c.extras[pid]||0; const cartonNet=p.pack.size*p.listNet;
-    return '<li class="hitem"><span class="h-art">'+art(p.art)+'</span><span class="h-name"><b>'+esc(p.short)+'</b><small>karton '+p.pack.size+' '+esc(p.unit)+' · '+zl(p.listNet)+'/'+esc(p.unit)+'</small><span class="h-price"><b class="num">'+zl(cartonNet)+'</b> netto / karton</span></span>'+
+    return '<li class="hitem"><span class="h-art">'+art(p.art)+'</span><span class="h-name"><b>'+esc(p.short)+'</b><span class="h-price"><b class="num">'+zl(cartonNet)+'</b> netto / karton</span><small>'+p.pack.size+' '+esc(p.unit)+' w kartonie · '+zl(p.listNet)+'/'+esc(p.unit)+'</small></span>'+
       (n?'<span class="xstep" role="group" aria-label="Kartony: '+esc(p.short)+'"><button type="button" data-act="x-dec" data-pid="'+pid+'" aria-label="Mniej o 1 karton: '+esc(p.short)+'">−1</button><span class="ear sm">'+cartonsText(n)+'</span><button type="button" data-act="x-inc" data-pid="'+pid+'" aria-label="Więcej o 1 karton: '+esc(p.short)+'">+1</button></span>':'<button type="button" class="btn btn-secondary h-add" data-act="x-add" data-pid="'+pid+'">'+ICON.plus+'Dodaj</button>')+'</li>'; }).join('')+'</ul></div>';
 }
 function ctaInner(o,cs,busy,approval){
@@ -1268,7 +1289,8 @@ function ctaInner(o,cs,busy,approval){
 function buyNote(cs,approval){
   const {chk,k}=cs; if(!chk.ok) return 'podaj liczbę kartonów';
   if(!k.minOk) return 'Za mało do dostawy — brakuje '+zl(k.missing)+' netto';
-  return 'brutto · dostawa w cenie'+(approval?' · płatność po akceptacji':'');
+  const ex=Object.keys(cs.c.extras||{}).length&&variantB()?' + '+Object.keys(cs.c.extras).length+' '+plural(Object.keys(cs.c.extras).length,['produkt','produkty','produktów']):'';
+  return cartonsText(cs.n)+ex+' · brutto · dostawa w cenie'+(approval?' · płatność po akceptacji':'');
 }
 function totalsHtml(k,o,ok){
   if(!ok) return '<p class="small muted">Podaj poprawną liczbę kartonów.</p>';
@@ -1286,6 +1308,7 @@ function patchBuy(o){
   $$('.preset').forEach(b=>{ const on=chk.ok&&parseInt(b.dataset.val,10)===n; b.classList.toggle('on',on); b.setAttribute('aria-pressed',String(on)); });
   const calcEl=$('#buy-calc'); if(calcEl) S.ui.calcOpen=calcEl.open;
   const d=$('#buy-dyn'); if(d) d.innerHTML=buyDyn(o,cs);
+  const br=$('#benefit-row'); if(br) br.innerHTML=benefitHtml(o,cs,Date.now());
   const cr=$('#cta-row'); if(cr) cr.innerHTML=ctaInner(o,cs,busy,approval);
   const app=$('.app'); if(app) app.classList.toggle('cta-tall',!!(chk.ok&&showProgress(cs)));
   save();
